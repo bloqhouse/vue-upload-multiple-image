@@ -259,6 +259,10 @@ export default {
     showImageList: {
       type: Boolean,
       default: true
+    },
+    currentIndex: {
+      type: Number,
+      default: 0
     }
   },
   data() {
@@ -451,6 +455,14 @@ export default {
         this.images = cloneDeep(newVal)
       },
       deep: true
+    },
+    currentIndex: {
+      handler: function (newVal) {
+        if (newVal >= 0 && newVal < this.images.length) {
+          this.changeHighlight(newVal)
+        }
+      },
+      immediate: true
     }
   },
   mounted() {
