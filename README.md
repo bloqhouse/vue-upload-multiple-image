@@ -248,6 +248,12 @@ a {
       <td>Maximum upload image</td>
     </tr>
     <tr>
+      <td>showImageList</td>
+      <td>Boolean</td>
+      <td>true</td>
+      <td>Show bottom image row, add image icon will be moved inside main block</td>
+    </tr>
+    <tr>
       <td>showEdit</td>
       <td>Boolean</td>
       <td>true</td>
