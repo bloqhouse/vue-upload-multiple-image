@@ -111,7 +111,7 @@
             </label>
             <div
               class="image-list-item position-relative cursor-pointer display-flex justify-content-center align-items-center margin-right-10"
-              v-if="(images.length < maxImage) && showAdd && !showImageReorder">
+              v-if="(images.length < maxImage) && showAdd && showImageReorder">
               <svg class="icon add-image-svg" xmlns="http://www.w3.org/2000/svg" width="512" height="512"
                 viewBox="0 0 512 512">
                 <path d="M511.5 227.5h-227V.5h-57v227H-.5v57h228v228h57v-228h227z"></path>
@@ -174,13 +174,14 @@
       </vue-image-lightbox-carousel>
     </div>
     <!-- Image selection area for reordering -->
-    <div v-if="images.length > 1 && showImageReorder" ref="imageSelectionArea"
+    <div v-if="validImages.length > 1 && showImageReorder" ref="imageSelectionArea"
       class="mt-3 d-flex flex-row flex-wrap gap-3 flex">
-      <div v-for="(img, index) in images" :key="img.path || img.name"
+      <div v-for="(img, index) in validImages" :key="img.path || img.name || index"
         class="d-flex flex-column align-items-center p-2 reorder-item"
         :class="{ 'selected-image': selectedImageIndex === index, 'image-preview': true }"
         @click.stop="selectImage(index)">
-        <img :src="img.path" alt="preview" class="reorder-image" />
+        <img v-if="img && img.path" :src="img.path" alt="preview" class="reorder-image" />
+        <div v-else class="reorder-image image-placeholder">Loading...</div>
 
         <!-- Reorder buttons under the image -->
         <div v-if="selectedImageIndex === index" class="gap-1 mt-2 flex justify-content-center" @click.stop>
@@ -188,7 +189,7 @@
             <button class="btn btn-sm btn-outline-secondary" :disabled="index === 0" @click.prevent="moveImage('up')">
               ←
             </button>
-            <button class="btn btn-sm btn-outline-secondary" :disabled="index === images.length - 1"
+            <button class="btn btn-sm btn-outline-secondary" :disabled="index === validImages.length - 1"
               @click.prevent="moveImage('down')">
               →
             </button>
@@ -335,12 +336,31 @@ export default {
 
       const currentImage = this.images[this.currentIndexImage]
       return currentImage && currentImage.default ? currentImage.default : false
+    },
+
+    // Add computed property for valid images
+    validImages() {
+      if (!this.images || !Array.isArray(this.images)) {
+        return []
+      }
+      return this.images.filter(img => img && (img.path || img.name))
     }
   },
   methods: {
     preventEvent(e) {
       e.preventDefault()
       e.stopPropagation()
+    },
+    openGallery(index) {
+      this.showLightbox = true
+      this.$refs.lightbox.showImage(index)
+    },
+    onOpenedLightBox(value) {
+      if (value) {
+        this.showLightbox = true
+      } else {
+        this.showLightbox = false
+      }
     },
     onDrop(e) {
       this.isDragover = false
@@ -473,17 +493,6 @@ export default {
         }
       }, this.images)
     },
-    openGallery(index) {
-      this.showLightbox = true
-      this.$refs.lightbox.showImage(index)
-    },
-    onOpenedLightBox(value) {
-      if (value) {
-        this.showLightbox = true
-      } else {
-        this.showLightbox = false
-      }
-    },
     isValidNumberOfImages(amount) {
       if (amount > this.maxImage) {
         this.$emit('limit-exceeded', amount)
@@ -493,6 +502,11 @@ export default {
       }
     },
     selectImage(index) {
+      // Make sure we're working with valid images
+      if (!this.validImages[index]) {
+        return
+      }
+
       // Update local state first
       this.selectedImageIndex = index
 
@@ -502,7 +516,10 @@ export default {
       this.$emit('selection-changed', index)
     },
     isSelected(img) {
-      const index = this.images.findIndex(image => image === img)
+      if (!img || !this.validImages.length) {
+        return false
+      }
+      const index = this.validImages.findIndex(image => image === img)
       return this.selectedImageIndex === index
     },
     moveImage(direction) {
@@ -510,7 +527,7 @@ export default {
         ? this.externalSelectedIndex
         : this.selectedImageIndex
 
-      if (currentIndex === null) {
+      if (currentIndex === null || !this.validImages[currentIndex]) {
         return
       }
 
@@ -522,7 +539,7 @@ export default {
         newIndex = currentIndex - 1
       }
 
-      if (currentIndex < this.images.length - 1 && direction === 'down') {
+      if (currentIndex < this.validImages.length - 1 && direction === 'down') {
         // Move right (swap with next)  
         this.images.splice(currentIndex + 1, 0, this.images.splice(currentIndex, 1)[0])
         newIndex = currentIndex + 1
@@ -550,9 +567,15 @@ export default {
   watch: {
     dataImages: {
       handler: function (newVal) {
-        this.images = cloneDeep(newVal)
+        // Add safety check for async data loading
+        if (newVal && Array.isArray(newVal)) {
+          this.images = cloneDeep(newVal)
+        } else {
+          this.images = []
+        }
       },
-      deep: true
+      deep: true,
+      immediate: true
     },
     currentIndex: {
       handler: function (newVal) {
@@ -1014,6 +1037,16 @@ export default {
   color: #6c757d;
   background-color: transparent;
   border-color: #6c757d;
+}
+
+.image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border: 1px dashed #ccc;
+  color: #666;
+  font-size: 12px;
 }
 </style>
 <style lang="css">
