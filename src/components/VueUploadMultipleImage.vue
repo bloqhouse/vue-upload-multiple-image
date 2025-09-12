@@ -111,7 +111,7 @@
             </label>
             <div
               class="image-list-item position-relative cursor-pointer display-flex justify-content-center align-items-center margin-right-10"
-              v-if="(images.length < maxImage) && showAdd && !showImageList">
+              v-if="(images.length < maxImage) && showAdd && !showImageReorder">
               <svg class="icon add-image-svg" xmlns="http://www.w3.org/2000/svg" width="512" height="512"
                 viewBox="0 0 512 512">
                 <path d="M511.5 227.5h-227V.5h-57v227H-.5v57h228v228h57v-228h227z"></path>
@@ -141,7 +141,7 @@
       </div>
     </div>
 
-    <div v-if="showImageList">
+    <div v-if="!showImageReorder">
       <div class="image-list-container display-flex flex-wrap" v-if="images.length && multiple">
         <div class="image-list-item position-relative cursor-pointer" :class="image.highlight && 'image-highlight'"
           v-for="(image, index) in images" :key="index" @click="changeHighlight(index)">
@@ -172,6 +172,29 @@
       <vue-image-lightbox-carousel ref="lightbox" :show="showLightbox" @close="showLightbox = false" :images="images"
         @change="changeHighlight" :showCaption="false">
       </vue-image-lightbox-carousel>
+    </div>
+    <!-- Image selection area for reordering -->
+    <div v-if="images.length > 1 && showImageReorder" ref="imageSelectionArea"
+      class="mt-3 d-flex flex-row flex-wrap gap-3 flex">
+      <div v-for="(img, index) in images" :key="img.path || img.name"
+        class="d-flex flex-column align-items-center p-2 reorder-item"
+        :class="{ 'selected-image': selectedImageIndex === index, 'image-preview': true }"
+        @click.stop="selectImage(index)">
+        <img :src="img.path" alt="preview" class="reorder-image" />
+
+        <!-- Reorder buttons under the image -->
+        <div v-if="selectedImageIndex === index" class="gap-1 mt-2 flex justify-content-center" @click.stop>
+          <div class="reorder-item-button">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="index === 0" @click.prevent="moveImage('up')">
+              ←
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="index === images.length - 1"
+              @click.prevent="moveImage('down')">
+              →
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -256,13 +279,17 @@ export default {
       type: Boolean,
       default: false
     },
-    showImageList: {
-      type: Boolean,
-      default: true
-    },
     currentIndex: {
       type: Number,
       default: 0
+    },
+    showImageReorder: {
+      type: Boolean,
+      default: true
+    },
+    externalSelectedIndex: {
+      type: Number,
+      default: null
     }
   },
   data() {
@@ -271,7 +298,8 @@ export default {
       images: [],
       isDragover: false,
       showLightbox: false,
-      arrLightBox: []
+      arrLightBox: [],
+      selectedImageIndex: null
     }
   },
   components: {
@@ -447,8 +475,62 @@ export default {
       } else {
         return true
       }
-    }
+    },
+    selectImage(index) {
+      // Update local state first
+      this.selectedImageIndex = index
+
+      // Then emit to parent
+      this.$emit('update:selectedImageIndex', index)
+      this.$emit('image-selected', index)
+      this.$emit('selection-changed', index)
+    },
+    isSelected(img) {
+      const index = this.images.findIndex(image => image === img)
+      return this.selectedImageIndex === index
+    },
+    moveImage(direction) {
+      const currentIndex = this.externalSelectedIndex !== null
+        ? this.externalSelectedIndex
+        : this.selectedImageIndex
+
+      if (currentIndex === null) {
+        return
+      }
+
+      let newIndex = currentIndex
+
+      if (currentIndex > 0 && direction === 'up') {
+        // Move left (swap with previous)
+        this.images.splice(currentIndex - 1, 0, this.images.splice(currentIndex, 1)[0])
+        newIndex = currentIndex - 1
+      }
+
+      if (currentIndex < this.images.length - 1 && direction === 'down') {
+        // Move right (swap with next)  
+        this.images.splice(currentIndex + 1, 0, this.images.splice(currentIndex, 1)[0])
+        newIndex = currentIndex + 1
+      }
+
+      // Update the selected index to follow the moved image
+      this.selectedImageIndex = newIndex
+
+      // Emit the reordered images and new selected index (for parent components)
+      this.$emit('images-reordered', this.images, newIndex)
+      this.$emit('update:selectedImageIndex', newIndex)
+    },
   },
+  emits: [
+    'upload-success',
+    'edit-image',
+    'mark-is-primary',
+    'before-remove',
+    'limit-exceeded',
+    'image-selected',
+    'images-reordered',
+    'update:selectedImageIndex',
+    'selection-changed'
+  ],
   watch: {
     dataImages: {
       handler: function (newVal) {
@@ -460,6 +542,15 @@ export default {
       handler: function (newVal) {
         if (newVal >= 0 && newVal < this.images.length) {
           this.changeHighlight(newVal)
+          this.selectedImageIndex = newVal
+        }
+      },
+      immediate: true
+    },
+    externalSelectedIndex: {
+      handler: function (newVal) {
+        if (newVal !== null && newVal !== this.selectedImageIndex) {
+          this.selectedImageIndex = newVal
         }
       },
       immediate: true
@@ -475,7 +566,7 @@ export default {
   created() {
     this.images = []
     this.images = cloneDeep(this.dataImages)
-  }
+  },
 }
 </script>
 
@@ -783,6 +874,130 @@ export default {
   color: white;
   text-align: left;
   font-size: 12px;
+}
+
+.flex {
+  display: flex !important;
+}
+
+.flex-row {
+  flex-direction: row !important;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.p-2 {
+  padding: 0.5rem;
+}
+
+.reorder-item {
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.reorder-item-button {
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.reorder-image {
+  margin: 0 auto;
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-3 {
+  gap: 1rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+.image-preview {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.image-preview:hover {
+  border-color: #d6d6d6;
+}
+
+.selected-image {
+  border-color: #2fa3e6 !important;
+  background-color: #f0f8ff;
+}
+
+.reorder-image {
+  margin: 0 auto;
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+  /* Ensure proper display */
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  text-decoration: none;
+  color: #495057;
+  background-color: transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-sm {
+  padding: 0.125rem 0.25rem;
+  font-size: 0.75rem;
+  border-radius: 0.2rem;
+}
+
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  color: #6c757d;
+  background-color: transparent;
+  border-color: #6c757d;
 }
 </style>
 <style lang="css">
