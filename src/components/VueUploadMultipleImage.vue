@@ -307,36 +307,34 @@ export default {
     VueImageLightboxCarousel
   },
   computed: {
-    computed: {
-      imagePreview() {
-        // Add safety checks for undefined elements
-        if (!this.images || !this.images.length) {
-          return ''
-        }
-
-        // Find highlighted image, but filter out undefined elements first
-        const validImages = this.images.filter(img => img && img.path)
-        if (!validImages.length) {
-          return ''
-        }
-
-        let index = findIndex(validImages, { highlight: 1 })
-        if (index > -1 && validImages[index] && validImages[index].path) {
-          return validImages[index].path
-        } else {
-          // Fallback to first valid image
-          return validImages[0] && validImages[0].path ? validImages[0].path : ''
-        }
-      },
-
-      imageDefault() {
-        if (!this.images || !this.images.length) {
-          return false
-        }
-
-        const currentImage = this.images[this.currentIndexImage]
-        return currentImage && currentImage.default ? currentImage.default : false
+    imagePreview() {
+      // Add safety checks for undefined elements
+      if (!this.images || !this.images.length) {
+        return ''
       }
+
+      // Find highlighted image, but filter out undefined elements first
+      const validImages = this.images.filter(img => img && img.path)
+      if (!validImages.length) {
+        return ''
+      }
+
+      let index = findIndex(validImages, { highlight: 1 })
+      if (index > -1 && validImages[index] && validImages[index].path) {
+        return validImages[index].path
+      } else {
+        // Fallback to first valid image
+        return validImages[0] && validImages[0].path ? validImages[0].path : ''
+      }
+    },
+
+    imageDefault() {
+      if (!this.images || !this.images.length) {
+        return false
+      }
+
+      const currentImage = this.images[this.currentIndexImage]
+      return currentImage && currentImage.default ? currentImage.default : false
     }
   },
   methods: {
