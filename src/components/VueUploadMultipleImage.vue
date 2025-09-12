@@ -309,22 +309,36 @@ export default {
   },
   computed: {
     imagePreview() {
+      console.log('🖼️ Computing imagePreview:')
+      console.log('  - this.images:', this.images)
+      console.log('  - this.images.length:', this.images?.length)
+
       // Add safety checks for undefined elements
       if (!this.images || !this.images.length) {
+        console.log('  - No images available for preview')
         return ''
       }
 
       // Find highlighted image, but filter out undefined elements first
       const validImages = this.images.filter(img => img && img.path)
+      console.log('  - Valid images:', validImages.length)
+
       if (!validImages.length) {
+        console.log('  - No valid images with path')
         return ''
       }
 
       let index = findIndex(validImages, { highlight: 1 })
+      console.log('  - Highlighted image index:', index)
+
       if (index > -1 && validImages[index] && validImages[index].path) {
+        const preview = validImages[index].path.substring(0, 50) + '...'
+        console.log('  - Using highlighted image:', preview)
         return validImages[index].path
       } else {
         // Fallback to first valid image
+        const preview = validImages[0].path.substring(0, 50) + '...'
+        console.log('  - Using first valid image:', preview)
         return validImages[0] && validImages[0].path ? validImages[0].path : ''
       }
     },
@@ -340,10 +354,18 @@ export default {
 
     // Add computed property for valid images
     validImages() {
+      console.log('✅ Computing validImages:')
+      console.log('  - this.images:', this.images)
+
       if (!this.images || !Array.isArray(this.images)) {
+        console.log('  - No images or not array, returning empty')
         return []
       }
-      return this.images.filter(img => img && (img.path || img.name))
+
+      const valid = this.images.filter(img => img && (img.path || img.name))
+      console.log('  - Valid images count:', valid.length)
+      console.log('  - Valid images:', valid)
+      return valid
     }
   },
   methods: {
@@ -540,7 +562,7 @@ export default {
       }
 
       if (currentIndex < this.validImages.length - 1 && direction === 'down') {
-        // Move right (swap with next)  
+        // Move right (swap with next)
         this.images.splice(currentIndex + 1, 0, this.images.splice(currentIndex, 1)[0])
         newIndex = currentIndex + 1
       }
@@ -567,16 +589,34 @@ export default {
   watch: {
     dataImages: {
       handler: function (newVal) {
+        console.log('🔍 dataImages watcher triggered:')
+        console.log('  - newVal:', newVal)
+        console.log('  - newVal length:', newVal?.length)
+        console.log('  - newVal is array:', Array.isArray(newVal))
+
         // Add safety check for async data loading
         if (newVal && Array.isArray(newVal)) {
           this.images = cloneDeep(newVal)
+          console.log('  - images set to:', this.images)
+          console.log('  - images length:', this.images.length)
         } else {
           this.images = []
+          console.log('  - images reset to empty array')
         }
       },
       deep: true,
       immediate: true
     },
+
+    images: {
+      handler: function (newVal) {
+        console.log('🖼️ Internal images array changed:')
+        console.log('  - length:', newVal?.length)
+        console.log('  - first image:', newVal?.[0])
+      },
+      deep: true
+    },
+
     currentIndex: {
       handler: function (newVal) {
         if (newVal >= 0 && newVal < this.images.length) {
@@ -603,8 +643,16 @@ export default {
     })
   },
   created() {
+    console.log('🚀 Component created:')
+    console.log('  - dataImages prop:', this.dataImages)
+    console.log('  - dataImages length:', this.dataImages?.length)
+
     this.images = []
-    this.images = cloneDeep(this.dataImages)
+    if (this.dataImages && Array.isArray(this.dataImages)) {
+      this.images = cloneDeep(this.dataImages)
+      console.log('  - Initial images set:', this.images)
+      console.log('  - Initial images length:', this.images.length)
+    }
   },
 }
 </script>
@@ -1039,6 +1087,7 @@ export default {
   border-color: #6c757d;
 }
 
+/* Add placeholder style for loading images */
 .image-placeholder {
   display: flex;
   align-items: center;
