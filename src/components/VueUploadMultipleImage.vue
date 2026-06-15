@@ -168,11 +168,10 @@
         <input class="display-none" :id="idEdit" @change="editFieldChange" name="image" :accept="accept" type="file"
           :disabled="disabled">
       </div>
-
-      <vue-image-lightbox-carousel ref="lightbox" :show="showLightbox" @close="showLightbox = false" :images="images"
-        @change="changeHighlight" :showCaption="false">
-      </vue-image-lightbox-carousel>
     </div>
+    <vue-image-lightbox-carousel ref="lightbox" :show="showLightbox" @close="showLightbox = false" :images="images"
+      @change="changeHighlight" :showCaption="false">
+    </vue-image-lightbox-carousel>
     <!-- Image selection area for reordering -->
     <div v-if="validImages.length > 1 && showImageReorder" ref="imageSelectionArea"
       class="mt-3 d-flex flex-row flex-wrap gap-3 flex">
@@ -353,7 +352,9 @@ export default {
     },
     openGallery(index) {
       this.showLightbox = true
-      this.$refs.lightbox.showImage(index)
+      this.$nextTick(() => {
+        this.$refs.lightbox.showImage(index)
+      })
     },
     onOpenedLightBox(value) {
       if (value) {
